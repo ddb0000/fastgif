@@ -49,7 +49,7 @@
     }).join('') + inputFileNames.map((_, index) => `[v${index}]`).join('') + 'concat=n=' + inputFileNames.length + ':v=1:a=0[outv]';
 
     if (outputFormat === 'mp4') {
-        const ffmpegArgs = ['-framerate', '1', '-i', inputFileNames[0]];
+        const ffmpegArgs = ['-framerate', '20', '-i', inputFileNames[0]];
         
         // Add input arguments for each additional file
         for (let i = 1; i < inputFileNames.length; i++) {
