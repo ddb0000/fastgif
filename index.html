@@ -6,30 +6,60 @@
     <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.10.1/dist/ffmpeg.min.js"></script>
 </head>
 <body>
-    <h1>Upload Video Files</h1>
-    <input type="file" id="uploader" multiple>
-    <button onclick="convertToMp4()">Convert to MP4</button>
+    <h1>Upload Image Files to Create Video</h1>
+    <input type="file" id="uploader" accept=".png, .jpg, .jpeg" multiple>
+    <select id="formatSelector">
+      <option value="mp4">Convert to MP4</option>
+      <option value="gif">Convert to GIF</option>
+    </select>
+    <button onclick="convertToVideo()">Convert</button>
     <video id="outputVideo" controls></video>
 
     <script>
         const { createFFmpeg, fetchFile } = FFmpeg;
         const ffmpeg = createFFmpeg({ log: true });
 
-        async function convertToMp4() {
+        async function convertToVideo() {
             const uploader = document.getElementById('uploader');
+            const formatSelector = document.getElementById('formatSelector');
+            const outputFormat = formatSelector.value;
+            const outputExtension = outputFormat === 'mp4' ? '.mp4' : '.gif';
+            const mimeType = outputFormat === 'mp4' ? 'video/mp4' : 'image/gif';
+            const videoElement = document.getElementById('outputVideo');
+
             if (uploader.files.length === 0) {
-                alert('Please upload a file');
+                alert('Please upload files');
                 return;
             }
+            
             await ffmpeg.load();
-            ffmpeg.FS('writeFile', 'input.gif', await fetchFile(uploader.files[0]));
             
-            await ffmpeg.run('-i', 'input.gif', 'output.mp4');
-            const data = ffmpeg.FS('readFile', 'output.mp4');
-            
-            const video = document.getElementById('outputVideo');
-            video.src = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
-            video.play();
+            // Write each file to the FFmpeg FS (File System) with a proper sequential name
+            for (let i = 0; i < uploader.files.length; i++) {
+                const file = uploader.files[i];
+                // Use a pattern like 'image-1.png', 'image-2.png', ...
+                const filename = `image-${i}${file.name.match(/\.(jpg|jpeg|png)$/)[0]}`;
+                ffmpeg.FS('writeFile', filename, await fetchFile(file));
+            }
+
+            // Generate a list of filenames for FFmpeg input
+            const fileList = new Array(uploader.files.length)
+              .fill(0)
+              .map((_, i) => `image-${i}.png`); // This assumes the files are .png - adjust if necessary
+
+            if (outputFormat === 'mp4') {
+                // Use the generated file list for the input pattern
+                await ffmpeg.run('-framerate', '24', '-pattern_type', 'glob', '-i', `image-*.*`, 'output.mp4');
+                const data = ffmpeg.FS('readFile', 'output.mp4');
+                videoElement.src = URL.createObjectURL(new Blob([data.buffer], { type: mimeType }));
+                videoElement.play();
+            } else {
+                // Adjust ffmpeg command for GIF as needed
+                await ffmpeg.run('-f', 'image2', '-pattern_type', 'glob', '-i', `image-*.*`, 'output.gif');
+                const data = ffmpeg.FS('readFile', 'output.gif');
+                videoElement.src = URL.createObjectURL(new Blob([data.buffer], { type: mimeType }));
+                videoElement.play();
+            }
         }
     </script>
 </body>
