@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Processing with ffmpeg.wasm</title>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.10.1/dist/ffmpeg.min.js"></script>
+</head>
+<body>
+    <h1>Upload Video Files</h1>
+    <input type="file" id="uploader" multiple>
+    <button onclick="convertToMp4()">Convert to MP4</button>
+    <video id="outputVideo" controls></video>
+
+    <script>
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        const ffmpeg = createFFmpeg({ log: true });
+
+        async function convertToMp4() {
+            const uploader = document.getElementById('uploader');
+            if (uploader.files.length === 0) {
+                alert('Please upload a file');
+                return;
+            }
+            await ffmpeg.load();
+            ffmpeg.FS('writeFile', 'input.gif', await fetchFile(uploader.files[0]));
+            
+            await ffmpeg.run('-i', 'input.gif', 'output.mp4');
+            const data = ffmpeg.FS('readFile', 'output.mp4');
+            
+            const video = document.getElementById('outputVideo');
+            video.src = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+            video.play();
+        }
+    </script>
+</body>
+</html>
